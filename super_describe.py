@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import pyarrow
+import pyarrow #Added to suppress PyCharm warning. Not Familiar with the pandas 3 documentation yet.
 
 
 def super_describe(df):
