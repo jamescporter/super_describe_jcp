@@ -35,7 +35,7 @@ def super_describe(df):
 
     return summary_df.T
 
-path = '/Users/caseyfranco/Downloads/Housing Prices/house-prices-advanced-regression-techniques/train.csv'
+path = #YOUR FILE PATH HERE
 
 df = pd.read_csv(path)
 
