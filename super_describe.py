@@ -69,7 +69,7 @@ def super_describe(df):
         'Standard_Deviation_relative%': stds / means * 100,
         'Outliers_Tukey': df_numeric.apply(count_outliers_tukey),
         'Outliers_1p96_SD': df_numeric.apply(lambda x: count_outliers_1p96_sd(x, means[x.name], stds[x.name])),
-        'Mode': df_numeric.mode().iloc[0],
+        # 'Mode': df_numeric.mode().iloc[0] if not df_numeric.mode().empty else np.nan, #todo giving series of NP.nan
         'Skew_coef': 3 * (means - medians) / stds,
         'Mean_Geometric': df_numeric.apply(lambda x: gmean(x[x > 0]) if (x > 0).any() else np.nan),
         'Mean_Harmonic': df_numeric.apply(lambda x: hmean(x[x > 0]) if (x > 0).any() else np.nan),
