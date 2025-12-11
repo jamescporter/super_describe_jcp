@@ -10,14 +10,16 @@ def count_outliers_tukey(series):
     iqr = q3 - q1
     lower_fence = q1 - 1.5 * iqr
     upper_fence = q3 + 1.5 * iqr
-    return ((clean_series < lower_fence) | (clean_series > upper_fence)).sum()
+    outliers = ((clean_series < lower_fence) | (clean_series > upper_fence)).sum()
+    return outliers
 
 def count_outliers_1p96_sd(series, mean, std):
     """Count outliers using 1.96 * standard deviation rule with precomputed mean and std."""
     clean_series = series.dropna()
     lower_fence = mean - 1.96 * std
     upper_fence = mean + 1.96 * std
-    return ((clean_series < lower_fence) | (clean_series > upper_fence)).sum()
+    outliers = ((clean_series < lower_fence) | (clean_series > upper_fence)).sum()
+    return outliers
 
 
 def super_describe(df):
@@ -37,7 +39,7 @@ def super_describe(df):
     # Select only numeric columns from the DataFrame and drop rows with NaNs
     df_numeric = df.select_dtypes(include=[np.number])
     predropped_shape = df_numeric.shape[0]
-    df_numeric = df_numeric.dropna()
+    #df_numeric = df_numeric.dropna()
     dropped_rows = predropped_shape - df_numeric.shape[0]
 
     # Calculate basic statistical measures using pandas describe method
@@ -58,6 +60,8 @@ def super_describe(df):
 
     # Calculate additional statistical measures
     additional_stats = {
+        'Count_nonNaN': df_numeric.count(),
+        'Count_NaN': df_numeric.isna().sum(),
         'Variance': stds ** 2,
         'Skew': df_numeric.skew(),
         'Variance_coef%': stds / means * 100,
@@ -67,14 +71,21 @@ def super_describe(df):
         'Standard_Error_Mean': df_numeric.sem(),
         'Mean_Trimmed': df_numeric.apply(lambda x: trim_mean(x, 0.1)),
         'Standard_Deviation_relative%': stds / means * 100,
-        'Outliers_Tukey': df_numeric.apply(count_outliers_tukey),
-        'Outliers_1p96_SD': df_numeric.apply(lambda x: count_outliers_1p96_sd(x, means[x.name], stds[x.name])),
-        # 'Mode': df_numeric.mode().iloc[0] if not df_numeric.mode().empty else np.nan, #todo giving series of NP.nan
+        'Outliers_Tukey': df_numeric.apply(count_outliers_tukey, axis=0),
+        'Outliers_1p96_SD': df_numeric.apply(lambda x: count_outliers_1p96_sd(x, means[x.name], stds[x.name]), axis=0),
+        'Mode': df_numeric.mode().iloc[0] if not df_numeric.mode().empty else np.nan, #todo giving series of NP.nan
         'Skew_coef': 3 * (means - medians) / stds,
         'Mean_Geometric': df_numeric.apply(lambda x: gmean(x[x > 0]) if (x > 0).any() else np.nan),
         'Mean_Harmonic': df_numeric.apply(lambda x: hmean(x[x > 0]) if (x > 0).any() else np.nan),
         'Kurtosis_Excess': df_numeric.kurtosis() - 3,
     }
+    # for key, value in additional_stats.items():
+    #     if hasattr(value, 'shape'):
+    #         print(f"{key}: shape = {value.shape}")
+    #     elif hasattr(value, 'size'):
+    #         print(f"{key}: size = {value.size}")
+    #     else:
+    #         print(f"{key}: Not an array or Series")
 
     # Create DataFrame for additional statistics
     additional_stats_df = pd.DataFrame(additional_stats)
@@ -96,6 +107,7 @@ def super_describe(df):
     if dropped_rows > 0:
         print(f"Warning: {dropped_rows} rows were dropped due to NaN values. If this is a relatively large amount of data lost this may affect statistical results.")
 
+    final_df = final_df.apply(pd.to_numeric, errors = 'coerce')
     return final_df
 
 # Example usage:
