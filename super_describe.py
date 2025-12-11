@@ -94,7 +94,7 @@ def super_describe(df):
     final_df = pd.concat([describe_df.T, additional_stats_df], axis=1).T
 
     # Reorder columns for final output
-    ordered_columns = [
+    ordered_columns = ['Count_nonNaN', 'Count_NaN',
         'Mean', 'Mean_Trimmed', 'Mean_Harmonic', 'Mean_Geometric', 'Median', 'Mode',
         'Standard_Deviation', 'Standard_Deviation_relative%', 'Variance', 'Variance_coef%',
         'Median_Absolute_Deviation', 'Standard_Error_Mean', 'Q1', 'Q3', 'Skew', 'Skew_coef',
