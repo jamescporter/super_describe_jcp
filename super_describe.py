@@ -67,25 +67,19 @@ def super_describe(df):
         'Variance_coef%': stds / means * 100,
         'Mean_Median_Difference': means - medians,
         'Kurtosis': df_numeric.kurtosis(),
+        'Mean_Absolute_Deviation':(df_numeric - means).abs().mean(),
         'Median_Absolute_Deviation': df_numeric.apply(lambda x: median_abs_deviation(x, nan_policy='omit')),
         'Standard_Error_Mean': df_numeric.sem(),
-        'Mean_Trimmed': df_numeric.apply(lambda x: trim_mean(x, 0.1)),
-        'Standard_Deviation_relative%': stds / means * 100,
+        #'Mean_Trimmed': df_numeric.apply(lambda x: trim_mean(x, 0.1)),
+        #'Standard_Deviation_relative%': stds / means * 100,
         'Outliers_Tukey': df_numeric.apply(count_outliers_tukey, axis=0),
         'Outliers_1p96_SD': df_numeric.apply(lambda x: count_outliers_1p96_sd(x, means[x.name], stds[x.name]), axis=0),
         'Mode': df_numeric.mode().iloc[0] if not df_numeric.mode().empty else np.nan, #todo giving series of NP.nan
         'Skew_coef': 3 * (means - medians) / stds,
-        'Mean_Geometric': df_numeric.apply(lambda x: gmean(x[x > 0]) if (x > 0).any() else np.nan),
-        'Mean_Harmonic': df_numeric.apply(lambda x: hmean(x[x > 0]) if (x > 0).any() else np.nan),
-        'Kurtosis_Excess': df_numeric.kurtosis() - 3,
+        #'Mean_Geometric': df_numeric.apply(lambda x: gmean(x[x > 0]) if (x > 0).any() else np.nan),
+        #'Mean_Harmonic': df_numeric.apply(lambda x: hmean(x[x > 0]) if (x > 0).any() else np.nan),
+        #'Kurtosis_Excess': df_numeric.kurtosis() - 3,
     }
-    # for key, value in additional_stats.items():
-    #     if hasattr(value, 'shape'):
-    #         print(f"{key}: shape = {value.shape}")
-    #     elif hasattr(value, 'size'):
-    #         print(f"{key}: size = {value.size}")
-    #     else:
-    #         print(f"{key}: Not an array or Series")
 
     # Create DataFrame for additional statistics
     additional_stats_df = pd.DataFrame(additional_stats)
@@ -95,10 +89,14 @@ def super_describe(df):
 
     # Reorder columns for final output
     ordered_columns = ['Count_nonNaN', 'Count_NaN',
-        'Mean', 'Mean_Trimmed', 'Mean_Harmonic', 'Mean_Geometric', 'Median', 'Mode',
-        'Standard_Deviation', 'Standard_Deviation_relative%', 'Variance', 'Variance_coef%',
-        'Median_Absolute_Deviation', 'Standard_Error_Mean', 'Q1', 'Q3', 'Skew', 'Skew_coef',
-        'Mean_Median_Difference', 'Kurtosis', 'Kurtosis_Excess',
+        'Mean', #'Mean_Trimmed',
+        #'Mean_Harmonic', 'Mean_Geometric',
+        'Median', 'Mode',
+        'Standard_Deviation', #'Standard_Deviation_relative%',
+                       'Variance', 'Variance_coef%',
+                       'Mean_Absolute_Deviation',
+                       'Median_Absolute_Deviation', 'Standard_Error_Mean', 'Q1', 'Q3', 'Skew', 'Skew_coef',
+        'Mean_Median_Difference', 'Kurtosis', #'Kurtosis_Excess',
         'Minimum', 'Maximum', 'Outliers_Tukey', 'Outliers_1p96_SD'
     ]
 
