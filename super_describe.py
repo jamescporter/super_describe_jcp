@@ -28,7 +28,7 @@ def super_describe(df, cast_to_float32 = False, verbose = False):
             now = time.time()
             elapsed = now - last_time  # time since previous call
             last_time = now  # update for next call
-            print(f"{elapsed:.4f}s - {msg}")
+            print(f"Previous {elapsed:.3f}s - Next: {msg}")
 
     # Select only numeric columns from the DataFrame and drop rows with NaNs
     df_numeric = df.select_dtypes(include = [np.number])
@@ -39,8 +39,6 @@ def super_describe(df, cast_to_float32 = False, verbose = False):
     predropped_shape = df_numeric.shape[0]
     # df_numeric = df_numeric.dropna()
     dropped_rows = predropped_shape - df_numeric.shape[0]
-
-    # Calculate basic statistical measures using pandas describe method
     print_w_time("Calculating basic statistics with describe()...")
     describe_df = df_numeric.describe(percentiles = [0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99]).rename(index = {
         'count':'Count_nonNaN',
@@ -66,39 +64,33 @@ def super_describe(df, cast_to_float32 = False, verbose = False):
     q1 = describe_df.loc['Q1']
     q3 = describe_df.loc['Q3']
 
-    # Calculate Skew and Kurtosis once (needed for stats and for Jarque-Bera)
     print_w_time("Calculating skewness and kurtosis...")
     skew_vals = df_numeric.skew()
     kurt_vals = df_numeric.kurtosis()  # Pandas calculates "Excess Kurtosis" (Normal = 0)
 
-    # Vectorised Outlier Calculations (Much faster than .apply)
-    # Tukey Logic
-    print_w_time("Calculating outliers using Tukey and 1.96 SD methods...")
+    print_w_time("Calculating outliers using Tukey...")
     iqr = q3 - q1
     lower_fence_tukey = q1 - 1.5 * iqr
     upper_fence_tukey = q3 + 1.5 * iqr
     outliers_tukey_counts = ((df_numeric < lower_fence_tukey) | (df_numeric > upper_fence_tukey)).sum()
 
-    # 1.96 SD Logic
     print_w_time("Calculating outliers using 1.96 SD method...")
     lower_fence_sd = means - 1.96 * stds
     upper_fence_sd = means + 1.96 * stds
     outliers_sd_counts = ((df_numeric < lower_fence_sd) | (df_numeric > upper_fence_sd)).sum()
 
-    # Vectorised Counts for Zero-Inflation and Negatives
-    print_w_time("Calculating zero and negative counts...")
+    print_w_time("Calculating Zero-Inflation and Negatives counts...")
     zeros = (df_numeric == 0).sum()
     negatives = (df_numeric < 0).sum()
 
-    # Vectorised Jarque-Bera Calculation
-    # Formula: (n/6) * (S^2 + (K^2)/4) using Excess Kurtosis
     print_w_time("Calculating Jarque-Bera statistics...")
+    # Formula: (n/6) * (S^2 + (K^2)/4) using Excess Kurtosis
     jb_score = (counts / 6) * (skew_vals ** 2 + (kurt_vals ** 2) / 4)
-    # Calculate p-value from Chi-Squared distribution (df=2)
-    print_w_time("Calculating Jarque-Bera p-values...")
+
+    print_w_time("Calculating Jarque-Bera p-values...") #p-value from Chi-Squared distribution (df=2)
     jb_p_value = pd.Series(chi2.sf(jb_score, 2), index = df_numeric.columns)
 
-    print_w_time("Calculating modes...")
+    print_w_time("Calculating mode...")
     # Try Scipy mode first (Fast C-code). Fallback to Pandas if mixed-types fail.
     try:
         # nan_policy='omit' handles NaNs; getting [0] extracts the mode array from the result object
@@ -110,13 +102,12 @@ def super_describe(df, cast_to_float32 = False, verbose = False):
         mode_vals = df_numeric.mode(dropna = True).iloc[0]
         mode_vals = mode_vals.reindex(df_numeric.columns)
 
-    print_w_time("Compiling final statistics DataFrame...")
-    # Calculate additional statistical measures
+    print_w_time("Compiling final statistics DF & additional stats...")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category = RuntimeWarning)
         additional_stats = {
             'Count_nonNaN':             counts,
-            'Count_NaN':                predropped_shape - counts,  # Optimization: Arithmetic instead of isna().sum()
+            'Count_NaN':                predropped_shape - counts,
             'Sum':                      df_numeric.sum(),
             'Variance':                 stds ** 2,
             'Skew':                     skew_vals,
@@ -124,17 +115,14 @@ def super_describe(df, cast_to_float32 = False, verbose = False):
             'Mean_Median_Difference':   means - medians,
             'Kurtosis':                 kurt_vals,
             'Mean_Absolute_Deviation':  (df_numeric - means).abs().mean(),
-            # Optimized MAD: Pure Pandas Vectorization (fixes TypeError and improves speed)
             'Median_Absolute_Deviation':(df_numeric - medians).abs().median(),
-            'Standard_Error_Mean':      stds / np.sqrt(counts),  # Optimization: Arithmetic instead of .sem()
+            'Standard_Error_Mean':      stds / np.sqrt(counts),
             # 'Mean_Trimmed': df_numeric.apply(lambda x: trim_mean(x, 0.1)),
             # 'Standard_Deviation_relative%': stds / means * 100,
             'Outliers_Tukey':           outliers_tukey_counts,
             'Outliers_1p96_SD':         outliers_sd_counts,
             'Mode':                     mode_vals,
             'Skew_coef':                3 * (means - medians) / stds,
-
-            # --- NEW METRICS ---
             'IQR':                      iqr,
             'Range':                    describe_df.loc['Maximum'] - describe_df.loc['Minimum'],
             'Count_Zeros':              zeros,
@@ -142,7 +130,6 @@ def super_describe(df, cast_to_float32 = False, verbose = False):
             'Percent_Negative':         (negatives / counts) * 100,
             'Count_Unique':             df_numeric.nunique(),
             'Unique_Ratio':             df_numeric.nunique() / counts,
-            # Optimized Jarque-Bera: Now fully vectorized
             'Jarque_Bera_Prob':         jb_p_value,
 
             # 'Mean_Geometric': df_numeric.apply(lambda x: gmean(x[x > 0]) if (x > 0).any() else np.nan),
@@ -151,7 +138,6 @@ def super_describe(df, cast_to_float32 = False, verbose = False):
         }
 
     print_w_time("Creating additional statistics DataFrame...")
-    # Create DataFrame for additional statistics
     additional_stats_df = pd.DataFrame(additional_stats)
 
     # Merge and transpose the final DataFrame
@@ -161,7 +147,6 @@ def super_describe(df, cast_to_float32 = False, verbose = False):
     final_df = final_df.loc[~final_df.index.duplicated(keep = 'first')]
 
     print_w_time("Reordering columns for final output...")
-    # Reorder columns for final output
     ordered_columns = [
         'Count_nonNaN', 'Count_NaN', 'Sum',
         'Mean',  # 'Mean_Trimmed',
